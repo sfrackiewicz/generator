@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Bungee', cursive;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        h1 {
+            text-align: center;
+            text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+            margin-bottom: 80px;
+            padding: 0 20px;
+            font-size: 2.5rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 450px;
+            height: 450px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 0 30px #ff00ff, 0 0 60px #00ffff, 0 0 90px #39ff14, 0 0 120px #ffea00;
+        }
+
+        .pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 50px solid #ffffff;
+            z-index: 10;
+            filter: drop-shadow(0 0 10px #ffffff);
+        }
+
+        button {
+            margin-top: 70px;
+            padding: 15px 50px;
+            font-size: 24px;
+            font-weight: bold;
+            font-family: 'Bungee', cursive;
+            background: transparent;
+            color: #ffffff;
+            border: 3px solid #00ffff;
+            border-radius: 40px;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px #00ffff, inset 0 0 15px #00ffff;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #00ffff;
+            color: #000000;
+            box-shadow: 0 0 30px #00ffff, inset 0 0 30px #00ffff;
+        }
+
+        button:disabled {
+            border-color: #555555;
+            color: #555555;
+            box-shadow: none;
+            cursor: not-allowed;
+            background: transparent;
+        }
+
+        #result {
+            margin-top: 30px;
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            min-height: 40px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            padding: 0 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>JAKA AFERKA NA DZIŚ</h1>
+
+    <div class="wheel-container">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="600" height="600"></canvas>
+    </div>
+
+    <button id="spinBtn">Zakręć</button>
+    <div id="result"></div>
+
+    <script>
+        const canvas = document.getElementById("wheel");
+        const ctx = canvas.getContext("2d");
+        const spinBtn = document.getElementById("spinBtn");
+        const resultDiv = document.getElementById("result");
+        const segments = [
+            "Niepoważny Prokurator",
+            "Ktoś obraził medyka",
+            "Jakaś laska się spłakała",
+            "Bipolar",
+            "Niepoważny Prokurator",
+            "Ktoś obraził medyka",
+            "Jakaś laska się spłakała",
+            "Bipolar",
+            "Zakładnik czatu",
+            "Dyktatura",
+            "Decyzje z dupy",
+            "Zazdrość",
+            "Zakładnik czatu",
+            "Dyktatura",
+            "Decyzje z dupy",
+            "Zazdrość"
+        ];
+        const colors = [
+            "#ff00ff", // Neon Magenta
+            "#00ffff", // Neon Cyan
+            "#39ff14", // Neon Green
+            "#ffea00", // Neon Yellow
+            "#ff00ff", // Neon Magenta
+            "#00ffff", // Neon Cyan
+            "#39ff14", // Neon Green
+            "#ffea00",  // Neon Yellow
+            "#ff00ff", // Neon Magenta
+            "#00ffff", // Neon Cyan
+            "#39ff14", // Neon Green
+            "#ffea00", // Neon Yellow
+            "#ff00ff", // Neon Magenta
+            "#00ffff", // Neon Cyan
+            "#39ff14", // Neon Green
+            "#ffea00"  // Neon Yellow
+        ];
+
+        let currentAngle = 0;
+        let initialAngle = 0;
+        let spinTime = 0;
+        let spinTimeTotal = 0;
+        let spinAngleStart = 0;
+        let previousTimestamp = null;
+        let isSpinning = false;
+        function drawWheel() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 10;
+            const arc = Math.PI * 2 / segments.length;
+
+            function drawWrappedText(text, x, y, maxWidth, lineHeight) {
+                const words = text.split(" ");
+                const lines = [];
+                let line = "";
+
+                for (let j = 0; j < words.length; j++) {
+                    const testLine = line ? `${line} ${words[j]}` : words[j];
+                    const testWidth = ctx.measureText(testLine).width;
+                    if (testWidth > maxWidth && line) {
+                        lines.push(line);
+                        line = words[j];
+                    } else {
+                        line = testLine;
+                    }
+                }
+                lines.push(line);
+
+                const offsetY = -((lines.length - 1) / 2) * lineHeight;
+                for (let j = 0; j < lines.length; j++) {
+                    const lineY = y + offsetY + j * lineHeight;
+                    ctx.strokeText(lines[j], x, lineY);
+                    ctx.fillText(lines[j], x, lineY);
+                }
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < segments.length; i++) {
+                const angle = currentAngle + i * arc;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, angle, angle + arc, false);
+                ctx.lineTo(centerX, centerY);
+                ctx.fillStyle = colors[i];
+                ctx.shadowColor = colors[i];
+                ctx.shadowBlur = 30;
+                ctx.fill();
+                ctx.shadowBlur = 0; // reset
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 3;
+                ctx.shadowColor = "#ffffff";
+                ctx.shadowBlur = 10;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.save();
+                ctx.translate(
+                    centerX + Math.cos(angle + arc / 2) * (radius - 90),
+                    centerY + Math.sin(angle + arc / 2) * (radius - 90)
+                );
+                ctx.rotate(angle + arc / 2);
+                ctx.fillStyle = "#ffffff";
+                ctx.strokeStyle = "#000000";
+                ctx.lineWidth = 2;
+                ctx.shadowColor = "";
+                ctx.shadowBlur = 0;
+                ctx.font = "bold 18px 'Bungee', cursive";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                drawWrappedText(segments[i], 0, 0, 130, 20);
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
+            ctx.fillStyle = "#121212";
+            ctx.shadowColor = "#ffffff";
+            ctx.shadowBlur = 20;
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3;
+            ctx.shadowColor = "#ffffff";
+            ctx.shadowBlur = 10;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+        function rotateWheel(timestamp) {
+            if (!previousTimestamp) previousTimestamp = timestamp;
+            const delta = timestamp - previousTimestamp;
+            previousTimestamp = timestamp;
+            spinTime += delta;
+
+            if (spinTime >= spinTimeTotal) {
+                currentAngle = initialAngle + spinAngleStart * Math.PI / 180;
+                stopRotateWheel();
+                return;
+            }
+
+            const spinAngle = easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+            currentAngle = initialAngle + spinAngle * Math.PI / 180;
+            drawWheel();
+            requestAnimationFrame(rotateWheel);
+        }
+        function stopRotateWheel() {
+            isSpinning = false;
+            spinBtn.disabled = false;
+            const arc = Math.PI * 2 / segments.length;
+            const degrees = (currentAngle * 180 / Math.PI) % 360;
+            const pointerAngle = 270; 
+            let index = Math.floor(((360 - degrees + pointerAngle) % 360) / (360 / segments.length));
+            
+            resultDiv.innerText = segments[index];
+            resultDiv.style.opacity = "1";
+        }
+        function easeOut(t, b, c, d) {
+            const ts = (t /= d) * t;
+            const tc = ts * t;
+            return b + c * (tc + -3 * ts + 3 * t);
+        }
+        spinBtn.addEventListener("click", () => {
+            if (isSpinning) return;
+            isSpinning = true;
+            spinBtn.disabled = true;
+            resultDiv.innerText = "";
+            resultDiv.style.opacity = "0";
+            initialAngle = currentAngle;
+            previousTimestamp = null;
+            spinAngleStart = Math.random() * 2400 + 2400; // 6-10 obrotów
+            spinTime = 0;
+            spinTimeTotal = Math.random() * 3000 + 4000; // kręci się od 4 do 7 sekund
+            
+            requestAnimationFrame(rotateWheel);
+        });
+        
+        // Czekaj na załadowanie fontu przed rysowaniem koła
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                drawWheel();
+            });
+        } else {
+            // Fallback dla starszych przeglądarek
+            window.addEventListener('load', () => {
+                drawWheel();
+            });
+        }
+    </script>
+</body>
+</html>
